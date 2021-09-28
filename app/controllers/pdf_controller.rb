@@ -5,9 +5,18 @@ class PdfController < ApplicationController
         if pdf.save
             begin 
                 pdf.process_file split: 1
-            rescue
-
+                if pdf.save 
+                    render json: PdfDocumentSerializer.new(pdf).serializable_hash, status: :ok
+                else
+                    pdf.destroy
+                    render status: :bad_request 
+                end
+            rescue => exception
+                pdf.destroy 
+                render  status: :bad_request 
             end 
+        else 
+            render json: {error: pdf.errors.full_messages}, status: :bad_request 
         end
     end
 

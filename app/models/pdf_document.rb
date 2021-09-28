@@ -130,6 +130,6 @@ class PdfDocument < ApplicationRecord
     end
 
     def add_exp
-        self.exp = DateTime.today + 1
+        self.exp = DateTime.now + 1
     end
 end
