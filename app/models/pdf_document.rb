@@ -1,4 +1,19 @@
 class PdfDocument < ApplicationRecord
+
+    ###
+    ### Class Methods
+    ###
+    
+    def self.clean
+        records = self.where("exp < ? OR exp IS ?", DateTime.now, nil)
+        records.destroy_all
+        self.clean_uploads
+    end
+
+    def self.clean_uploads
+        Dir['**/'].reverse_each { |d| Dir.rmdir d if Dir.entries(d).size == 2 }
+    end
+
     ###
     ### Associations
     ###
@@ -15,16 +30,14 @@ class PdfDocument < ApplicationRecord
     ###
     ### Lifecyvle
     ###
-    
+    before_create :add_exp
     before_destroy :delete_file
     ###
     ### Public Instance Methods
     ###
 
     def process_file(**options)
-        filepath = pdf_file.file.file
-        unless File.exists?(filepath)
-         
+        unless File.exists?(filepath)    
             errors.add file: "file not found"
             return
         end
@@ -44,8 +57,16 @@ class PdfDocument < ApplicationRecord
         end
     end
 
+    def filepath
+        pdf_file.file.file
+    end
+
     def delete_file
-        File.delete(pdf_file)
+        begin 
+            File.delete(filepath)
+        rescue Errno::ENOENT
+            p 'ignoring file'
+        end 
     end
 
     def contents
@@ -58,6 +79,16 @@ class PdfDocument < ApplicationRecord
             hash
         end
     end
+
+    def lines 
+        self.chunks.inject({}) do |hash, chunk|
+            hash[:lines] = {} unless hash.has_key?(:lines)
+            hash[:lines][chunk.line] = {} unless hash[:lines].has_key?(chunk.line)
+            hash[:lines][chunk.line][chunk.line_index] = chunk.text.strip
+            hash
+        end
+    end
+
     ###
     ### Private
     ###
@@ -87,22 +118,18 @@ class PdfDocument < ApplicationRecord
     end
 
     def chunk_test(chunk, space_count, split_after)
-        if space_count > split_after
-            # chunk.save if chunk.class == Chunk
-            chunk = nil
-        end
+        return nil if space_count > split_after
         chunk
     end
 
 
     def convert_to_lines(str)
-        total_lines = 0
-        str.to_s.scan(/([^\n]+)/).each_with_index do |line, index| 
-            yield(line, index) if block_given?
-            total_lines += index + 1
-        end
-        total_lines
+        arr = str.to_s.scan(/([^\n]+)/)
+        arr.each_with_index { |line, index| yield(line, index) if block_given? }
+        arr.count
     end
 
-
+    def add_exp
+        self.exp = DateTime.today + 1
+    end
 end
