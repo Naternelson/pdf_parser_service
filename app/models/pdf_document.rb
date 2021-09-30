@@ -7,12 +7,12 @@ class PdfDocument < ApplicationRecord
     def self.clean
         records = self.where("exp < ? OR exp IS ?", DateTime.now, nil)
         records.destroy_all
-        self.clean_uploads
+        # self.clean_uploads
     end
 
-    def self.clean_uploads
-        Dir['**/'].reverse_each { |d| Dir.rmdir d if Dir.entries(d).size == 2 }
-    end
+    # def self.clean_uploads
+    #     Dir['**/'].reverse_each { |d| Dir.rmdir d if Dir.entries(d).size == 2 }
+    # end
 
     ###
     ### Associations
